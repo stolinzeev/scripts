@@ -2,19 +2,23 @@ import sys
 import boto3
 import datetime
 import time
-
 now = datetime.datetime.now()
 now = now.strftime("%d-%m-%Y")
+
+tag_name = 'tag:backupee'
+tag_value = 'true'
+
+image_tag_name = 'rotate'
+image_tag_value = 'true'
 
 def main(args):
 
 
     ec2 = boto3.client('ec2')
-
-##TODO tag backup=true
+## tag backup=true
     instances = ec2.describe_instances(
         Filters=[{'Name': 'instance-state-name', 'Values': ['running']},
-                 {'Name': 'tag:backup', 'Values': ['true']}])
+                 {'Name': tag_name, 'Values': [tag_value]}])
 
     for res in instances['Reservations']:
         for insta in res['Instances']:
@@ -34,7 +38,30 @@ def main(args):
                         Description=imageName,
                         NoReboot=True
                     )
-                    #time.sleep(30)
+
+                    imageId = None
+                    while imageId == None:
+                        images = ec2.describe_images(
+                            Filters=[{'Name': 'name', 'Values': [imageName]}])
+
+                        #print(images)
+                        for insta in images['Images']:
+                            imageId = insta['ImageId']
+                            time.sleep(10)
+                            print(imageId)
+
+                            response = ec2.create_tags(
+                                Resources=[
+                                    imageId,
+                                ],
+                                Tags=[
+                                    {
+                                        'Key': image_tag_name,
+                                        'Value': image_tag_value
+                                    },
+                                ]
+                            )
+
 pass
 
 if __name__ == "__main__":
